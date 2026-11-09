@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catholic Sacred Music Sequencer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #090B10;
+            --card-bg: rgba(20, 24, 34, 0.85);
+            --card-border: rgba(212, 175, 55, 0.2);
+            --gold-accent: #d4af37;
+            --gold-soft: #f3e5ab;
+            --gold-glow: rgba(212, 175, 55, 0.3);
+            --text-main: #f0ede6;
+            --text-sub: #a0a7b5;
+            --cell-off: rgba(255, 255, 255, 0.04);
+            --cell-active: rgba(212, 175, 55, 0.6);
+            --cell-playing: #ffffff;
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.08), transparent 70%),
+                radial-gradient(circle at 80% 80%, rgba(100, 181, 246, 0.05), transparent 50%);
+            color: var(--text-main);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        header h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 2rem;
+            letter-spacing: 2px;
+            color: var(--gold-soft);
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+        }
+
+        header p {
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            font-weight: 300;
+        }
+
+        .controls-bar {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 1rem 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            backdrop-filter: blur(12px);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: rgba(212, 175, 55, 0.15);
+            border-color: var(--gold-accent);
+            color: var(--gold-soft);
+        }
+
+        .btn-primary {
+            background: rgba(212, 175, 55, 0.15);
+            border-color: var(--gold-accent);
+            color: var(--gold-soft);
+        }
+
+        .btn-record {
+            background: rgba(220, 53, 69, 0.15);
+            border-color: rgba(220, 53, 69, 0.4);
+            color: #ff6b6b;
+        }
+
+        .btn-record.recording {
+            background: rgba(220, 53, 69, 0.4);
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            to { box-shadow: 0 0 12px rgba(220, 53, 69, 0.8); }
+        }
+
+        .tempo-control {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .tempo-control input[type="range"] {
+            accent-color: var(--gold-accent);
+            cursor: pointer;
+        }
+
+        .sequencer-container {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            backdrop-filter: blur(12px);
+            overflow-x: auto;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-rows: repeat(9, 1fr);
+            gap: 0.5rem;
+            min-width: 780px;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 210px repeat(16, 1fr);
+            gap: 0.35rem;
+            align-items: center;
+        }
+
+        .track-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--gold-soft);
+            padding-right: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            background: var(--cell-off);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.12s ease;
+        }
+
+        .cell:hover {
+            border-color: var(--gold-accent);
+            background: rgba(212, 175, 55, 0.15);
+        }
+
+        .cell.active {
+            background: var(--cell-active);
+            border-color: var(--gold-accent);
+            box-shadow: 0 0 8px var(--gold-glow);
+        }
+
+        .cell.playing {
+            border-color: #ffffff;
+            box-shadow: 0 0 10px #ffffff;
+        }
+
+        .cell.playing.active {
+            background: #ffffff;
+        }
+
+        .step-header {
+            margin-bottom: 0.25rem;
+        }
+
+        .step-header .track-label {
+            color: var(--text-sub);
+            font-size: 0.75rem;
+        }
+
+        .step-number {
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--text-sub);
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>CATHOLIC SACRED SEQUENCER</h1>
+            <p>Compose smooth liturgical soundscapes with crystal-clear audio performance</p>
+        </header>
+
+        <!-- Controls Bar -->
+        <div class="controls-bar">
+            <div class="btn-group">
+                <button class="btn btn-primary" id="playBtn" onclick="togglePlay()">
+                    <span>▶</span> Play
+                </button>
+
+                <button class="btn" onclick="clearGrid()">
+                    <span>🗑</span> Clear Grid
+                </button>
+
+                <button class="btn btn-record" id="recordBtn" onclick="toggleRecording()">
+                    <span>🔴</span> Record & Save WAV
+                </button>
+            </div>
+
+            <div class="tempo-control">
+                <label for="bpm">Tempo:</label>
+                <input type="range" id="bpm" min="50" max="130" value="75" oninput="updateBpm(this.value)">
+                <span id="bpmVal" style="font-family: monospace; width: 45px;">75 BPM</span>
+            </div>
+        </div>
+
+        <!-- 8x16 Grid -->
+        <div class="sequencer-container">
+            <div class="grid" id="grid">
+                <div class="row step-header">
+                    <div class="track-label">SOFT CHURCH TONES</div>
+                    <script>
+                        for (let i = 1; i <= 16; i++) {
+                            document.write(`<div class="step-number">${i}</div>`);
+                        }
+                    </script>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 8 Pure Soft Tones modeled after your requested preset sound profile
+        const tracks = [
+            { name: "🕊️ Soft Choir Pad (E5)", type: "choir", note: 659.25 },
+            { name: "🕊️ Soft Choir Pad (E4)", type: "choir", note: 329.63 },
+            { name: "🕊️ Soft Choir Pad (C4)", type: "choir", note: 261.63 },
+            { name: "🔔 Cathedral Chime (G4)", type: "chime", note: 392.00 },
+            { name: "🔔 Cathedral Chime (C4)", type: "chime", note: 261.63 },
+            { name: "💨 Sacred Flute Stop (A4)", type: "flute", note: 440.00 },
+            { name: "💨 Sacred Flute Stop (F4)", type: "flute", note: 349.23 },
+            { name: "⛪ Soft Church Organ (C3)", type: "soft_organ", note: 130.81 }
+        ];
+
+        const gridState = Array(8).fill(null).map(() => Array(16).fill(false));
+
+        let audioCtx = null;
+        let isPlaying = false;
+        let currentStep = 0;
+        let bpm = 75;
+        let nextNoteTime = 0.0;
+        let timerWorker = null;
+
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let masterGain = null;
+        let masterDest = null;
+        let reverbNode = null;
+
+        function initAudioCtx() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+                
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = 0.8;
+                masterGain.connect(audioCtx.destination);
+
+                masterDest = audioCtx.createMediaStreamDestination();
+                masterGain.connect(masterDest);
+
+                // Shared Convolution Reverb for cathedral space
+                reverbNode = audioCtx.createConvolver();
+                reverbNode.buffer = createSmoothReverbBuffer(audioCtx, 3.0, 2.5);
+
+                const wetGain = audioCtx.createGain();
+                wetGain.gain.value = 0.3;
+
+                reverbNode.connect(wetGain);
+                wetGain.connect(masterGain);
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Build 8x16 Grid UI
+        const gridEl = document.getElementById('grid');
+        tracks.forEach((track, r) => {
+            const rowEl = document.createElement('div');
+            rowEl.className = 'row';
+            
+            const labelEl = document.createElement('div');
+            labelEl.className = 'track-label';
+            labelEl.innerText = track.name;
+            rowEl.appendChild(labelEl);
+
+            for (let c = 0; c < 16; c++) {
+                const cellEl = document.createElement('div');
+                cellEl.className = 'cell';
+                cellEl.id = `cell-${r}-${c}`;
+                cellEl.onclick = () => toggleCell(r, c);
+                rowEl.appendChild(cellEl);
+            }
+            gridEl.appendChild(rowEl);
+        });
+
+        function toggleCell(r, c) {
+            initAudioCtx();
+            gridState[r][c] = !gridState[r][c];
+            document.getElementById(`cell-${r}-${c}`).classList.toggle('active', gridState[r][c]);
+
+            if (gridState[r][c]) {
+                triggerSoftTone(tracks[r], audioCtx.currentTime);
+            }
+        }
+
+        function clearGrid() {
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 16; c++) {
+                    gridState[r][c] = false;
+                    document.getElementById(`cell-${r}-${c}`).classList.remove('active');
+                }
+            }
+        }
+
+        function updateBpm(val) {
+            bpm = val;
+            document.getElementById('bpmVal').innerText = `${bpm} BPM`;
+        }
+
+        // High-Precision Scheduler Clock (eliminates lag & stuttering)
+        function scheduler() {
+            while (nextNoteTime < audioCtx.currentTime + 0.1) {
+                scheduleStep(currentStep, nextNoteTime);
+                nextStep();
+            }
+            if (isPlaying) {
+                requestAnimationFrame(scheduler);
+            }
+        }
+
+        function nextStep() {
+            const secondsPerBeat = 60.0 / bpm / 4; // 16th notes
+            nextNoteTime += secondsPerBeat;
+            currentStep = (currentStep + 1) % 16;
+        }
+
+        function scheduleStep(step, time) {
+            for (let r = 0; r < 8; r++) {
+                if (gridState[r][step]) {
+                    triggerSoftTone(tracks[r], time);
+                }
+            }
+
+            const drawDelay = Math.max(0, (time - audioCtx.currentTime) * 1000);
+            setTimeout(() => {
+                if (isPlaying) updateStepUI(step);
+            }, drawDelay);
+        }
+
+        function togglePlay() {
+            initAudioCtx();
+            isPlaying = !isPlaying;
+
+            const playBtn = document.getElementById('playBtn');
+            if (isPlaying) {
+                playBtn.querySelector('span').innerText = '⏸';
+                playBtn.classList.add('btn-primary');
+                currentStep = 0;
+                nextNoteTime = audioCtx.currentTime + 0.02;
+                scheduler();
+            } else {
+                playBtn.querySelector('span').innerText = '▶';
+                clearHighlights();
+            }
+        }
+
+        function updateStepUI(step) {
+            clearHighlights();
+            for (let r = 0; r < 8; r++) {
+                const cell = document.getElementById(`cell-${r}-${step}`);
+                if (cell) cell.classList.add('playing');
+            }
+        }
+
+        function clearHighlights() {
+            const playingCells = document.querySelectorAll('.cell.playing');
+            playingCells.forEach(cell => cell.classList.remove('playing'));
+        }
+
+        // Pure Soft Synthesizer Envelopes
+        function triggerSoftTone(track, time) {
+            const now = time || audioCtx.currentTime;
+
+            if (track.type === "choir") {
+                // Soft Choir Pad: Pure dual sine swell with slow attack
+                [1, 1.002].forEach(detune => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(track.note * detune, now);
+
+                    gain.gain.setValueAtTime(0.0001, now);
+                    gain.gain.linearRampToValueAtTime(0.18, now + 0.15);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+
+                    osc.connect(gain);
+                    gain.connect(masterGain);
+                    gain.connect(reverbNode);
+
+                    osc.start(now);
+                    osc.stop(now + 0.95);
+                });
+
+            } else if (track.type === "chime") {
+                // Cathedral Chime: Clear sine decay with warm dampening
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(track.note, now);
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1400, now);
+
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(masterGain);
+                gain.connect(reverbNode);
+
+                osc.start(now);
+                osc.stop(now + 1.25);
+
+            } else if (track.type === "flute") {
+                // Sacred Flute Stop: Breath-like triangle sound
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(track.note, now);
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1200, now);
+
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.linearRampToValueAtTime(0.2, now + 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(masterGain);
+                gain.connect(reverbNode);
+
+                osc.start(now);
+                osc.stop(now + 0.75);
+
+            } else if (track.type === "soft_organ") {
+                // Soft Church Organ: Muted pipe warmth
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(track.note, now);
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(600, now);
+
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.linearRampToValueAtTime(0.22, now + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(masterGain);
+                gain.connect(reverbNode);
+
+                osc.start(now);
+                osc.stop(now + 0.85);
+            }
+        }
+
+        // Impulse Response for Smooth Sanctuary Acoustics
+        function createSmoothReverbBuffer(ctx, duration, decay) {
+            const sampleRate = ctx.sampleRate;
+            const length = sampleRate * duration;
+            const impulse = ctx.createBuffer(2, length, sampleRate);
+            const left = impulse.getChannelData(0);
+            const right = impulse.getChannelData(1);
+
+            for (let i = 0; i < length; i++) {
+                const n = i / length;
+                const e = Math.exp(-n * decay);
+                left[i] = (Math.random() * 2 - 1) * e * 0.3;
+                right[i] = (Math.random() * 2 - 1) * e * 0.3;
+            }
+            return impulse;
+        }
+
+        // WAV Recording & File Export
+        function toggleRecording() {
+            initAudioCtx();
+
+            const recordBtn = document.getElementById('recordBtn');
+
+            if (!isRecording) {
+                isRecording = true;
+                audioChunks = [];
+
+                const stream = masterDest.stream;
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = saveAudioFile;
+
+                mediaRecorder.start();
+                recordBtn.classList.add('recording');
+                recordBtn.innerText = '⏹ Stop & Export WAV';
+
+                if (!isPlaying) togglePlay();
+            } else {
+                isRecording = false;
+                mediaRecorder.stop();
+                recordBtn.classList.remove('recording');
+                recordBtn.innerHTML = '<span>🔴</span> Record & Save WAV';
+
+                if (isPlaying) togglePlay();
+            }
+        }
+
+        function saveAudioFile() {
+            const blob = new Blob(audioChunks, { type: 'audio/wav' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'catholic_soft_soundtrack.wav';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+    </script>
+</body>
+</html>
